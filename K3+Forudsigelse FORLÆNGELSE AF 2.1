@@ -1,0 +1,252 @@
+#OPG2.2. (INDEN SELVE OPGAVEN)
+##VIGTIGT. HER STARTES DER MED AT OPDATERE DATA, SÅ HELE KVARTAL 3 ER MED
+#Ændrer månedens NAværdi til -13,7 som er det tal DST har offentliggjort i dag
+#STARTER MED DST-FTI
+ftillid$`2026M09` <- NA
+ftillid$`2026M09`[1] <- "-13.7"
+
+ftillid[, c("2026M07", "2026M08", "2026M09")]
+
+#Regn det fulde gennemsnit ud
+DST_K3_2026 <- mean(
+  as.numeric(c(
+    ftillid$`2026M07`[1],
+    ftillid$`2026M08`[1],
+    ftillid$`2026M09`[1]
+  ))
+)
+DST_K3_2026
+
+
+# Fjern første kolonne med spørgsmålsnavne
+ftillid_clean <- ftillid[, -1]
+
+# Gør alle månedskolonner numeriske
+ftillid_num <- as.data.frame(
+  lapply(ftillid_clean, as.numeric)
+)
+
+# Lav månedlig tidsserie
+ftillid_TS <- ts(
+  t(ftillid_num),
+  start = c(2000, 1),
+  frequency = 12
+)
+
+# Omregn fra måneder til kvartaler
+ftillid_kvt_ts <- aggregate(
+  ftillid_TS,
+  nfrequency = 4
+) / 3
+
+# Giv kolonnerne de oprindelige indikatornavne
+colnames(ftillid_kvt_ts) <- ftillid[[1]]
+
+# Lav det om til dataframe
+ftillid_kvt <- data.frame(ftillid_kvt_ts)
+
+# Lav kvartalsnavne
+ftillid_kvt$Tidsinterval <- paste0(
+  floor(time(ftillid_kvt_ts)),
+  "K",
+  cycle(ftillid_kvt_ts)
+)
+
+ftillid_kvt[
+  ftillid_kvt$Tidsinterval == "2026K3",
+]
+
+#NU DIFTI (Tallene fundet manuelt)
+
+ny_DI <- data.frame(
+  Tid = "2026M09",
+  fm_nu = -8.6,
+  dk_nu = -22.5,
+  forbrugsgoder_nu = -14.3,
+  forbrugsgoder_frem = -4.7,
+  Tidsinterval = "2026K3"
+)
+
+DIFTI_clean <- rbind(DIFTI_clean, ny_DI)
+
+#Opdater og gennemsnit
+DI_K3_2026 <- DIFTI_clean[
+  DIFTI_clean$Tidsinterval == "2026K3",
+]
+
+DI_K3_spm <- colMeans(
+  DI_K3_2026[, c(
+    "fm_nu",
+    "dk_nu",
+    "forbrugsgoder_nu",
+    "forbrugsgoder_frem"
+  )]
+)
+
+DI_FTI_2026K3 <- mean(DI_K3_spm)
+DI_FTI_2026K3
+
+DST_FTI <- ftillid_kvt[, c(
+  "Tidsinterval",
+  "Forbrugertillidsindikatoren"
+)]
+names(DST_FTI)[2] <- "DST_FTI"
+
+
+kvartaler <- unique(DIFTI_clean$Tidsinterval)
+
+DIFTI_kvt <- data.frame(
+  Tidsinterval = character(),
+  fm_nu = numeric(),
+  dk_nu = numeric(),
+  forbrugsgoder_nu = numeric(),
+  forbrugsgoder_frem = numeric()
+)
+
+DIFTI_kvt <- aggregate(
+  cbind(
+    fm_nu,
+    dk_nu,
+    forbrugsgoder_nu,
+    forbrugsgoder_frem
+  ) ~ Tidsinterval,
+  data = DIFTI_clean,
+  FUN = mean,
+  na.rm = TRUE
+)
+DIFTI_kvt$DI_FTI <- (
+  DIFTI_kvt$fm_nu +
+    DIFTI_kvt$dk_nu +
+    DIFTI_kvt$forbrugsgoder_nu +
+    DIFTI_kvt$forbrugsgoder_frem
+) / 4
+
+tail(DIFTI_kvt)
+#Skift navn så du kan huske (forhåbentlig)
+DST_data <- DST_FTI
+DI_data <- DIFTI_kvt
+DST_data <- ftillid_kvt
+
+
+#LOGISTISK REGRESSION
+# først en ny variabel med to grupper:
+# 1 = realvæksten går op
+# 0 = realvæksten går ned eller er 0
+
+privatforbrug$retning <- ifelse(
+  privatforbrug$Realvaekst > 0,
+  1,
+  0
+)
+
+
+#Tjek hvor mange observationer der er i hver gruppe
+
+table(privatforbrug$retning)
+
+# DST - LOGISTISK REGRESSION
+
+# Samler privatforbrug og DST-data med tidsinterval
+
+logistisk_DST_data <- merge(
+  privatforbrug,
+  DST_data,
+  by = "Tidsinterval"
+)
+
+
+#Laver logistisk regression
+# Y = retning (op/ned)
+# X = DST's forbrugertillidsindikator
+
+logistisk_DST <- glm(
+  retning ~ Forbrugertillidsindikatoren,
+  family = "binomial",
+  data = logistisk_DST_data
+)
+
+
+#Viser resultatet
+
+summary(logistisk_DST)
+
+
+#Beregner modellens forudsagte sandsynligheder
+#Sandsynligheden er for retning = 1, altså "op"
+
+forudsigelse_DST <- predict(
+  logistisk_DST,
+  type = "response"
+)
+
+
+#Viser et overblik over sandsynlighederne
+
+summary(forudsigelse_DST)
+
+
+
+
+# DI - LOGISTISK REGRESSION
+
+
+# Samler privatforbrug og DI-data via Tidsinterval
+
+logistisk_DI_data <- merge(
+  privatforbrug,
+  DI_data,
+  by = "Tidsinterval"
+)
+
+
+#laver logistisk regression
+# Y = retning (op/ned)
+# X = DI's forbrugertillidsindikator
+
+logistisk_DI <- glm(
+  retning ~ DI_FTI,
+  family = "binomial",
+  data = logistisk_DI_data
+)
+
+
+#viser resultat af model
+
+summary(logistisk_DI)
+
+
+# Beregner modellens forudsagte sandsynligheder
+# Sandsynligheden er for retning = 1, altså "op"
+
+forudsigelse_DI <- predict(
+  logistisk_DI,
+  type = "response"
+)
+
+
+#overblik over sandsynlighed
+
+summary(logistisk_DST)
+summary(logistisk_DI)
+
+#FORUDSIG K3 FOR DEN ÅRLIGE REALVÆKST
+
+
+# DST
+predict(
+  logistisk_DST,
+  newdata = data.frame(
+    Forbrugertillidsindikatoren = -13.83333
+  ),
+  type = "response"
+)
+
+
+# DI
+predict(
+  logistisk_DI,
+  newdata = data.frame(
+    DI_FTI = -13.30833
+  ),
+  type = "response"
+)

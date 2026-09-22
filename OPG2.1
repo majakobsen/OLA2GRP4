@@ -1,0 +1,851 @@
+
+# PAKKER
+library(dkstat)
+library(ggplot2)
+library(tidyr)
+library(readxl)
+
+
+# --------------------------------------------------
+# FORBRUGERTILLID FRA MÅNEDER TIL KVARTALER
+# --------------------------------------------------
+
+# Se datasættet
+str(ftillid)
+head(ftillid)
+
+
+# Fjerner første kolonne med indikatornavne
+ftillid_clean <- ftillid[, -1]
+
+
+# Gør alle værdier numeriske
+ftillid_num <- as.data.frame(
+  lapply(ftillid_clean, as.numeric)
+)
+
+
+# Beholder de oprindelige månedsnavne
+# fx 2000M01, 2000M02 osv.
+colnames(ftillid_num) <- colnames(ftillid_clean)
+
+
+# Henter månedsnavnene
+tid <- colnames(ftillid_num)
+
+
+# Finder år
+# fx "2000M01" -> "2000"
+aar <- substr(tid, 1, 4)
+
+
+# Finder måned
+# fx "2000M01" -> 1
+maaned <- as.numeric(
+  substr(tid, 6, 7)
+)
+
+
+# Finder hvilket kvartal måneden tilhører
+kvartal <- ifelse(
+  maaned <= 3, "K1",
+  ifelse(
+    maaned <= 6, "K2",
+    ifelse(
+      maaned <= 9, "K3",
+      "K4"
+    )
+  )
+)
+
+
+# Samler år og kvartal
+# fx 2000 + K1 -> 2000K1
+tidsinterval <- paste0(
+  aar,
+  kvartal
+)
+
+
+# Finder alle forskellige kvartaler
+kvartaler <- unique(tidsinterval)
+
+
+# Opretter et tomt dataframe
+# Samme antal rækker som indikatorer
+# Én kolonne pr. kvartal
+ftillid_kvt <- data.frame(
+  matrix(
+    NA,
+    nrow = nrow(ftillid_num),
+    ncol = length(kvartaler)
+  )
+)
+
+
+# --------------------------------------------------
+# BEREGNER KVARTALSGENNEMSNIT
+# --------------------------------------------------
+
+# Går igennem ét kvartal ad gangen
+for (i in 1:length(kvartaler)) {
+  
+  # Finder hvilke måneder der hører til kvartalet
+  kolonner <- which(
+    tidsinterval == kvartaler[i]
+  )
+  
+  # Beregner gennemsnittet af månederne
+  ftillid_kvt[, i] <- rowMeans(
+    ftillid_num[, kolonner, drop = FALSE],
+    na.rm = TRUE
+  )
+}
+
+
+# Sætter kvartaler som kolonnenavne
+colnames(ftillid_kvt) <- kvartaler
+
+
+# Sætter indikatornavnene tilbage som rækkenavne
+rownames(ftillid_kvt) <- ftillid[[1]]
+
+
+# --------------------------------------------------
+# KONTROL
+# --------------------------------------------------
+
+# Første kvartaler
+head(colnames(ftillid_kvt))
+
+# Seneste kvartaler
+tail(colnames(ftillid_kvt))
+
+# Tjekker hvilke måneder der bruges til 2026K3
+colnames(ftillid_num)[
+  which(tidsinterval == "2026K3")
+]
+
+# Viser hele kvartalsdatasættet
+ftillid_kvt
+
+#søg efter rækkenavn
+rownames(ftillid_kvt)
+#ny dataframe med den række
+DST_FTI <- data.frame(
+  Tidsinterval = colnames(ftillid_kvt),
+  DST_FTI = as.numeric(
+    ftillid_kvt["Forbrugertillidsindikatoren", ]
+  )
+)
+
+head(DST_FTI)
+tail(DST_FTI)
+str(DST_FTI)
+
+#Merge forbrug med DST FTI
+forbrug_DST <- merge(
+  DST_FTI,
+  privatforbrug,
+  by = "Tidsinterval"
+)
+
+head(forbrug_DST)
+tail(forbrug_DST)
+
+
+model_DST <- lm(
+  Realvaekst ~ DST_FTI,
+  data = forbrug_DST
+)
+
+summary(model_DST)
+
+
+# --------------------------------------------------
+# FÆLLES STIL TIL GRAFERNE
+# --------------------------------------------------
+
+# Farver der ligger tæt på DI's figur
+farve_realvaekst <- "#1595D3"   # blå søjler
+farve_fti <- "#666666"          # mørkegrå linje
+farve_grid <- "#D9D9D9"         # lysegrå hjælpelinjer
+
+# Skalering mellem nettotal og pct.
+# Venstre akse ca. -25 til 25
+# Højre akse ca. -8 til 8
+skalering <- 25 / 8
+
+# --------------------------------------------------
+# GRAF 1: DI-FTI OG PRIVATFORBRUGETS REALVÆKST
+# --------------------------------------------------
+
+ggplot(
+  forbrug_DI,
+  aes(x = Tidsinterval)
+) +
+  
+  # Realvækst som blå søjler
+  geom_col(
+    aes(y = Realvaekst * skalering),
+    fill = farve_realvaekst,
+    width = 0.8
+  ) +
+  
+  # DI-FTI som grå linje
+  geom_line(
+    aes(
+      y = DI_FTI,
+      group = 1
+    ),
+    colour = farve_fti,
+    linewidth = 1
+  ) +
+  
+  # Venstre og højre y-akse
+  scale_y_continuous(
+    name = "Nettotal",
+    
+    sec.axis = sec_axis(
+      ~ . / skalering,
+      name = "Pct."
+    )
+  ) +
+  
+  # Viser årstal ved K1
+  scale_x_discrete(
+    breaks = forbrug_DI$Tidsinterval[
+      grepl("K1$", forbrug_DI$Tidsinterval)
+    ],
+    
+    labels = substr(
+      forbrug_DI$Tidsinterval[
+        grepl("K1$", forbrug_DI$Tidsinterval)
+      ],
+      1,
+      4
+    )
+  ) +
+  
+  # Titel og kilder
+  labs(
+    title = "DI's forbrugertillidsindikator følger privatforbruget",
+    subtitle = "DI-FTI og årlig realvækst pr. kvartal i privatforbruget",
+    x = NULL,
+    caption = paste0(
+      "Kilde: Danmarks Statistik og DI (Baum, 2016). ",
+      "DI-FTI er beregnet som gennemsnittet af DI's fire udvalgte spørgsmål. ",
+      "Egne beregninger og databehandling i R/RStudio."
+    )
+  ) +
+  
+  # Tema
+  theme_minimal() +
+  
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 14,
+      colour = "#222222"
+    ),
+    
+    plot.subtitle = element_text(
+      size = 10,
+      colour = "#444444"
+    ),
+    
+    axis.title = element_text(
+      size = 10,
+      colour = "#444444"
+    ),
+    
+    axis.text = element_text(
+      size = 8,
+      colour = "#444444"
+    ),
+    
+    axis.text.x = element_text(
+      angle = 0,
+      hjust = 0.5
+    ),
+    
+    panel.grid.major.y = element_line(
+      colour = farve_grid,
+      linewidth = 0.5
+    ),
+    
+    panel.grid.major.x = element_blank(),
+    
+    panel.grid.minor = element_blank(),
+    
+    legend.position = "bottom",
+    
+    legend.justification = "left",
+    
+    plot.caption = element_text(
+      size = 8,
+      hjust = 0,
+      colour = "#555555"
+    )
+  )
+
+# --------------------------------------------------
+# GRAF: DST-FTI OG PRIVATFORBRUGETS REALVÆKST
+# --------------------------------------------------
+
+ggplot(
+  forbrug_DST,
+  aes(x = Tidsinterval)
+) +
+  
+  # Realvækst som blå søjler
+  geom_col(
+    aes(y = Realvaekst * (25 / 8)),
+    fill = "#1595D3",
+    width = 0.8
+  ) +
+  
+  # DST-FTI som grå linje
+  geom_line(
+    aes(
+      y = DST_FTI,
+      group = 1
+    ),
+    colour = "#666666",
+    linewidth = 1
+  ) +
+  
+  # Venstre og højre y-akse
+  scale_y_continuous(
+    name = "Nettotal",
+    
+    sec.axis = sec_axis(
+      ~ . / (25 / 8),
+      name = "Pct."
+    )
+  ) +
+  
+  # Viser kun årstal ved første kvartal
+  scale_x_discrete(
+    breaks = forbrug_DST$Tidsinterval[
+      grepl("K1$", forbrug_DST$Tidsinterval)
+    ],
+    
+    labels = substr(
+      forbrug_DST$Tidsinterval[
+        grepl("K1$", forbrug_DST$Tidsinterval)
+      ],
+      1,
+      4
+    )
+  ) +
+  
+  # Titel, forklaring og kilder
+  labs(
+    title = "DST's forbrugertillidsindikator og privatforbruget",
+    subtitle = "DST-FTI og årlig realvækst pr. kvartal i privatforbruget",
+    x = NULL,
+    
+    caption = paste0(
+      "Kilde: Danmarks Statistik. ",
+      "Forbrugertillidsindikatoren og privatforbruget er hentet fra Statistikbanken. ",
+      "Egne beregninger og databehandling i R/RStudio."
+    )
+  ) +
+  
+  # Udseende
+  theme_minimal() +
+  
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 14,
+      colour = "#222222"
+    ),
+    
+    plot.subtitle = element_text(
+      size = 10,
+      colour = "#444444"
+    ),
+    
+    axis.title = element_text(
+      size = 10,
+      colour = "#444444"
+    ),
+    
+    axis.text = element_text(
+      size = 8,
+      colour = "#444444"
+    ),
+    
+    axis.text.x = element_text(
+      angle = 0,
+      hjust = 0.5
+    ),
+    
+    panel.grid.major.y = element_line(
+      colour = "#D9D9D9",
+      linewidth = 0.5
+    ),
+    
+    panel.grid.major.x = element_blank(),
+    
+    panel.grid.minor = element_blank(),
+    
+    legend.position = "bottom",
+    
+    legend.justification = "left",
+    
+    plot.caption = element_text(
+      size = 8,
+      hjust = 0,
+      colour = "#555555"
+    )
+  )
+
+
+
+#Privatforbrug START
+privatforbrug_raw <- read_excel(
+  "privforbrug1999-2026k2.xlsx",
+  sheet = "NKN1",
+  skip = 2,
+  col_names = FALSE
+)
+#TJEK
+privatforbrug_raw
+dim(privatforbrug_raw)
+head(privatforbrug_raw)
+
+# Kvartalerne ligger i række 1 fra kolonne 4 og frem
+Tidsinterval <- as.character(
+  unlist(privatforbrug_raw[1, 4:ncol(privatforbrug_raw)])
+)
+
+# Privatforbruget ligger i række 2 fra kolonne 4 og frem
+Privatforbrug <- as.numeric(
+  unlist(privatforbrug_raw[2, 4:ncol(privatforbrug_raw)])
+)
+
+# Nyt rent dataframe
+privatforbrug <- data.frame(
+  Tidsinterval = Tidsinterval,
+  Privatforbrug = Privatforbrug
+)
+
+head(privatforbrug)
+tail(privatforbrug)
+str(privatforbrug)
+
+# Årlig realvækst i procent
+privatforbrug$Realvaekst <- c(
+  rep(NA, 4),
+  (
+    privatforbrug$Privatforbrug[5:nrow(privatforbrug)] /
+      privatforbrug$Privatforbrug[1:(nrow(privatforbrug) - 4)]
+    - 1
+  ) * 100
+)
+
+##HENT DI-FTI IND
+
+DIFTI <- read_excel("DIFTI.xlsx")
+
+#check rækker og kolonner
+str(DIFTI)
+head(DIFTI)
+tail(DIFTI)
+colnames(DIFTI)
+
+#Fjern de to første rækker
+DIFTI_clean <- DIFTI[-c(1, 2), ]
+head(DIFTI_clean)
+
+
+names(DIFTI_clean) <- c(
+  "Tid",
+  "fm_nu",
+  "dk_nu",
+  "forbrugsgoder_nu",
+  "forbrugsgoder_frem"
+)
+
+#Gør spørgsmålene numeriske
+
+DIFTI_clean[, 2:5] <- lapply(
+  DIFTI_clean[, 2:5],
+  as.numeric
+)
+
+str(DIFTI_clean)
+head(DIFTI_clean)
+tail(DIFTI_clean)
+
+#Gør måneder til kvartaler i DI-FTI
+
+# Opret tom kolonne til kvartaler
+DIFTI_clean$Tidsinterval <- NA
+
+# Gå igennem én række ad gangen
+for (i in 1:nrow(DIFTI_clean)) {
+  
+  # Finder året
+  aar <- substr(DIFTI_clean$Tid[i], 1, 4)
+  
+  # Finder måneden
+  maaned <- as.numeric(substr(DIFTI_clean$Tid[i], 6, 7))
+  
+  # Finder hvilket kvartal måneden tilhører
+  if (maaned <= 3) {
+    kvartal <- "K1"
+    
+  } else if (maaned <= 6) {
+    kvartal <- "K2"
+    
+  } else if (maaned <= 9) {
+    kvartal <- "K3"
+    
+  } else {
+    kvartal <- "K4"
+  }
+  
+  # Sammensætter fx 2026 og K3 til 2026K3
+  DIFTI_clean$Tidsinterval[i] <- paste0(aar, kvartal)
+}
+
+DIFTI_clean[["Tidsinterval"]] <- NA_character_
+
+tail(DIFTI_clean)
+
+#LAV GENNEMSNIT AF DE FIRE DI SPØRGSMÅL
+# Finder alle unikke kvartaler
+kvartaler <- unique(DIFTI_clean$Tidsinterval)
+
+# Opretter tomt dataframe til kvartalsdata
+DIFTI_kvt <- data.frame(
+  Tidsinterval = character(),
+  fm_nu = numeric(),
+  dk_nu = numeric(),
+  forbrugsgoder_nu = numeric(),
+  forbrugsgoder_frem = numeric()
+)
+
+# Går igennem ét kvartal ad gangen
+for (i in 1:length(kvartaler)) {
+  
+  # Vælger de rækker der hører til det aktuelle kvartal
+  kvartal_data <- DIFTI_clean[
+    DIFTI_clean$Tidsinterval == kvartaler[i],
+  ]
+  
+  # Beregner gennemsnit for de fire spørgsmål
+  ny_række <- data.frame(
+    Tidsinterval = kvartaler[i],
+    fm_nu = mean(kvartal_data$fm_nu, na.rm = TRUE),
+    dk_nu = mean(kvartal_data$dk_nu, na.rm = TRUE),
+    forbrugsgoder_nu = mean(kvartal_data$forbrugsgoder_nu, na.rm = TRUE),
+    forbrugsgoder_frem = mean(kvartal_data$forbrugsgoder_frem, na.rm = TRUE)
+  )
+  
+  # Tilføjer rækken til det nye dataframe
+  DIFTI_kvt <- rbind(DIFTI_kvt, ny_række)
+}
+
+#Simpelt gennemsnit af de fire spørgsmål i hvert kvartal
+DIFTI_kvt$DI_FTI <- (
+  DIFTI_kvt$fm_nu +
+    DIFTI_kvt$dk_nu +
+    DIFTI_kvt$forbrugsgoder_nu +
+    DIFTI_kvt$forbrugsgoder_frem
+) / 4
+
+head(DIFTI_kvt)
+tail(DIFTI_kvt)
+
+
+#Merge privatforbrug og DIfti i interval af kvartaler
+forbrug_DI <- merge(
+  DIFTI_kvt,
+  privatforbrug,
+  by = "Tidsinterval"
+)
+
+head(forbrug_DI)
+tail(forbrug_DI)
+str(forbrug_DI)
+
+#Regression
+model_DI <- lm(
+  Realvaekst ~ DI_FTI,
+  data = forbrug_DI
+)
+summary(model_DI)
+
+
+
+
+#Pivotterer privatforbrug
+privatforbrug_lang <- pivot_longer(
+  privatforbrugkædede,
+  cols = everything(),
+  names_to = "Tidsinterval",
+  values_to = "Privatforbrug"
+)
+
+#Gør numerisk, som før
+privatforbrug_lang$Privatforbrug <- as.numeric(
+  privatforbrug_lang$Privatforbrug
+)
+
+#Realvækst i procent. Sammenligner kvartaler i de to datasæt
+privatforbrug_lang$Realvaekst <- c(
+  rep(NA, 4),
+  (
+    privatforbrug_lang$Privatforbrug[5:nrow(privatforbrug_lang)] /
+      privatforbrug_lang$Privatforbrug[1:(nrow(privatforbrug_lang) - 4)]
+    - 1
+  ) * 100
+)
+#NA i starten, fordi den ikke kan sammenligne fra 1999
+
+#Merger de to, rensede datasæt
+forbrug_regression <- merge(
+  ftillidSPG,
+  privatforbrug_lang,
+  by = "Tidsinterval"
+)
+
+#Kontrol
+head(forbrug_regression)
+str(forbrug_regression)
+
+#Tjek af kolonnenavne og ændringer
+colnames(forbrug_regression)
+
+names(forbrug_regression)[2:6] <- c(
+  "fm_nu",
+  "fm_frem",
+  "dk_nu",
+  "dk_frem",
+  "forbrugsgoder"
+)
+
+#Multiple regressioner
+model_forbrug <- lm(
+  Realvaekst ~ fm_nu + fm_frem + dk_nu + dk_frem + forbrugsgoder,
+  data = forbrug_regression
+)
+
+summary(model_forbrug)
+
+#Nu den RIGTIGE version, fra 2000k1 til 2021k2
+#Start med at forkorte perioden
+
+regressionRIGTIG <- forbrug_regression[
+  forbrug_regression$Tidsinterval >= "2000K1" &
+    forbrug_regression$Tidsinterval <= "2021K2",
+]
+
+#Check om det virkede
+head(regressionRIGTIG$Tidsinterval)
+tail(regressionRIGTIG$Tidsinterval)
+
+#Regression igen
+modelRIGTIG <- lm(
+  Realvaekst ~ fm_nu + fm_frem + dk_nu + dk_frem + forbrugsgoder,
+  data = regressionRIGTIG
+)
+
+
+#resultat
+summary(modelRIGTIG)
+
+
+
+#Producer grafer. starter med en koefficientgraf
+#først hent koefficienter fra modelRIGTIG
+
+koefRIGTIG <- data.frame(
+  Variabel = c("fm_nu", "fm_frem", "dk_nu", "dk_frem", "forbrugsgoder"),
+  Koefficient = coef(modelRIGTIG)[-1]
+)
+
+#Variabelnavne ændres
+
+koefRIGTIG$Variabel <- c(
+  "Familiens økonomi nu",
+  "Familiens økonomi frem",
+  "Danmarks økonomi nu",
+  "Danmarks økonomi frem",
+  "Forbrugsgoder nu"
+)
+
+#Selve grafen m. ggplot2
+
+# Graf over koefficienterne i den multiple lineære regression
+# Hver søjle viser koefficienten for én af de 5 X-variable
+
+# Søjler over 0 = positiv sammenhæng med realvæksten
+# Søjler under 0 = negativ sammenhæng med realvæksten
+
+# Højden på søjlen viser størrelsen på koefficienten
+# Koefficienterne skal forstås "alt andet lige",
+# altså når de andre X-variable holdes konstante
+
+# Grafen viser også:
+# - perioden 2000K1-2021K2
+# - modellens justerede R²
+# - kilde: Danmarks Statistik
+# - at grafen er lavet i R
+# - dato for udarbejdelse
+
+ggplot(
+  koefRIGTIG,
+  aes(
+    x = Variabel,
+    y = Koefficient,
+    fill = Koefficient >= 0
+  )
+) +
+  
+  geom_col(
+    width = 0.55
+  ) +
+  
+  geom_hline(
+    yintercept = 0
+  ) +
+  
+  geom_text(
+    aes(
+      label = round(Koefficient, 3),
+      vjust = ifelse(Koefficient >= 0, -0.5, 1.5)
+    )
+  ) +
+  
+  scale_fill_manual(
+    values = c(
+      "TRUE" = "forestgreen",
+      "FALSE" = "red3"
+    ),
+    guide = "none"
+  ) +
+  
+  labs(
+    title = "Koefficienter i multipel lineær regression",
+    
+    subtitle = paste(
+      "Årlig realvækst i privatforbruget, 2000K1-2021K2 | Justeret R² =",
+      round(summary(modelRIGTIG)$adj.r.squared, 3)
+    ),
+    
+    x = "Forklarende variable",
+    
+    y = "Koefficient",
+    
+    caption = paste(
+      "Kilde: Danmarks Statistik.",
+      "Forbrugertillid og privatforbrug i kædede værdier.",
+      "Udarbejdet i R.",
+      "Dato:", format(Sys.Date(), "%d-%m-%Y")
+    )
+  ) +
+  
+  theme_minimal() +
+  
+  theme(
+    axis.text.x = element_text(
+      angle = 25,
+      hjust = 1
+    ),
+    
+    plot.title = element_text(
+      face = "bold"
+    ),
+    
+    plot.subtitle = element_text(
+      size = 10
+    ),
+    
+    plot.caption = element_text(
+      size = 8
+    )
+  )
+
+
+#Næste graf som påviser faktisk vs. forudsagt realvækst (i privatøkonomien)
+#Hent Y-værdier fra modelRIGTIG og forudsigende værdier fra X-variable også modelRIGTIG
+
+forudsagtRIGTIG <- data.frame(
+  faktisk = modelRIGTIG$model$Realvaekst,
+  forudsagt = fitted(modelRIGTIG)
+)
+
+ggplot(
+  forudsagtRIGTIG,
+  aes(x = faktisk, y = forudsagt)
+) +
+  
+  geom_point(
+    size = 2.5,
+    alpha = 0.7
+  ) +
+  
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    linetype = "dashed"
+  ) +
+  
+  scale_x_continuous(
+    expand = expansion(mult = c(0.05, 0.25))
+  ) +
+  
+  scale_y_continuous(
+    expand = expansion(mult = c(0.05, 0.05))
+  ) +
+  
+  annotate(
+    "text",
+    x = Inf,
+    y = Inf,
+    hjust = 1.05,
+    vjust = 1.1,
+    label = paste(
+      "Sådan læses grafen:",
+      "På linjen = modellen rammer præcist",
+      "Tæt på linjen = modellen rammer relativt godt",
+      "Langt fra linjen = modellen rammer dårligere",
+      sep = "\n"
+    ),
+    size = 3.2
+  ) +
+  
+  labs(
+    title = "Faktisk og forudsagt realvækst i privatforbruget",
+    
+    subtitle = paste(
+      "Multipel lineær regression, 2000K1-2021K2 | Justeret R² =",
+      round(summary(modelRIGTIG)$adj.r.squared, 3)
+    ),
+    
+    x = "Faktisk årlig realvækst (%)",
+    
+    y = "Modellens forudsagte årlige realvækst (%)",
+    
+    caption = paste(
+      "Kilde: Danmarks Statistik.",
+      "Forbrugertillid og privatforbrug i kædede værdier.",
+      "Udarbejdet i R.",
+      "Dato:", format(Sys.Date(), "%d-%m-%Y")
+    )
+  ) +
+  
+  theme_minimal() +
+  
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(size = 10),
+    plot.caption = element_text(size = 8)
+  )
+

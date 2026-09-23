@@ -1,0 +1,24 @@
+# Opgave 1.4
+
+library(ggplot2)
+
+# Behold kun relevante linjer
+boligoversigt <- samlet %>%
+  select(by, pris, kvmpris, bykategori)
+
+View(boligoversigt)
+
+# Beregn gennemsnit for hver bykategori
+plotdata <- boligoversigt %>%
+  group_by(bykategori) %>%
+  summarise(gennemsnit_kvmpris = mean(kvmpris))
+
+# Tegn søjlediagram
+
+ggplot(plotdata, aes(bykategori, gennemsnit_kvmpris, fill = bykategori)) +
+  geom_col(show.legend = TRUE) +
+  labs(
+    title = "Kvadratmeterpris efter bykategori",
+    x = "Bykategori",
+    y = "Kvadratmeterpris (1.000 kr.)"
+  )

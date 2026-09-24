@@ -1,0 +1,32 @@
+spg <- read_excel("/Users/emmasofiehojelse/Downloads/202692414856663246794FORV1.xlsx")
+
+View(spg)
+
+spg <- spg[-c(1,2), ]
+
+View(spg)
+
+colnames(spg) <- c("tid", "spg")
+
+spg$spg <- as.numeric(spg$spg)
+
+spg_ts <- ts(spg$spg,
+             start = c(2000, 1),
+             frequency = 12)
+
+spg_kvartal <- aggregate(spg_ts,
+                         nfrequency = 4,
+                         FUN = mean)
+
+spg_kvartal
+
+mean(spg_kvartal)
+
+# Fra 1. kvartal 2000 til 3. kvartal 2026 er det gennemsnitlige 
+# nettotal ca. -10,8. Det negative gennemsnit indikerer, at svarene 
+# over perioden samlet set har hældt mere i retning af, at det ikke 
+# er fordelagtigt at anskaffe større forbrugsgoder på det pågældende 
+# tidspunkt. Resultatet skal dog fortolkes med forsigtighed, da -10,8 
+# ikke er et svar, respondenterne selv kan vælge, men et gennemsnit 
+# af nettotallene over perioden. Et enkelt gennemsnit skjuler desuden 
+# store forskelle mellem kvartalerne. 

@@ -1,0 +1,35 @@
+library(readxl)
+
+forbrugertillid <- read_excel("/Users/emmasofiehojelse/Downloads/2026924133925663246794FORV1.xlsx")
+
+View(forbrugertillid)
+
+forbrugertillid <- forbrugertillid[-c(1,2), ]
+
+View(forbrugertillid)
+
+colnames(forbrugertillid) <- c("tid", "ftillid")
+
+View(forbrugertillid)
+
+forbrugertillid$ftillid <- as.numeric(forbrugertillid$ftillid)
+
+ftillid <- ts(forbrugertillid$ftillid,
+              start = c(1996, 1),
+              frequency = 12)
+
+ftillid_kvartal <- aggregate(ftillid,
+                             nfrequency = 4,
+                             FUN = mean)
+ftillid_kvartal
+
+plot(ftillid_kvartal,
+     type = "l",
+     main = "Forbrugertillid i Danmark",
+     xlab = "År",
+     ylab = "Forbrugertillidsindikator")
+
+abline(h = 0, lty = 2)
+
+#Over 0 → forbrugerne er samlet set mere positive/optimistiske.
+#Under 0 → forbrugerne er samlet set mere negative/pessimistiske.

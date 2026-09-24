@@ -1,3 +1,4 @@
+#data prep
 library(readxl)
 
 forbrugertillid <- read_excel("/Users/emmasofiehojelse/Downloads/2026924133925663246794FORV1.xlsx")
@@ -12,6 +13,7 @@ colnames(forbrugertillid) <- c("tid", "ftillid")
 
 View(forbrugertillid)
 
+#Lav til kvartaler
 forbrugertillid$ftillid <- as.numeric(forbrugertillid$ftillid)
 
 ftillid <- ts(forbrugertillid$ftillid,
@@ -23,6 +25,7 @@ ftillid_kvartal <- aggregate(ftillid,
                              FUN = mean)
 ftillid_kvartal
 
+#graf 
 plot(ftillid_kvartal,
      type = "l",
      main = "Forbrugertillid i Danmark",

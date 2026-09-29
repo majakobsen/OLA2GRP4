@@ -1,0 +1,21 @@
+# Opgave 3.1 
+
+resultater_DI <- forbrug_DI[, c(
+  "Tidsinterval", "Realvaekst", "DI_FTI"
+)]
+
+resultater_DST <- forbrug_DST[, c(
+  "Tidsinterval", "Realvaekst", "DST_FTI"
+)]
+
+# Konstantled + koefficient * x
+resultater_DI$Forudsagt <-
+  coef(model_DI)[["(Intercept)"]] +
+  coef(model_DI)[["DI_FTI"]] * resultater_DI$DI_FTI
+
+resultater_DST$Forudsagt <-
+  coef(model_DST)[["(Intercept)"]] +
+  coef(model_DST)[["DST_FTI"]] * resultater_DST$DST_FTI
+
+View(resultater_DI)
+View(resultater_DST)

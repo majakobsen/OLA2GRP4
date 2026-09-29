@@ -1,0 +1,139 @@
+
+# -------------
+# Opgave 5.1
+#--------------
+
+library(restatapi)
+library(dplyr)
+library(tidyr)
+
+# 1. Hent sæson- og kalenderkorrigeret realt husholdningsforbrug
+forbrug <- restatapi::get_eurostat_data(
+  id = "namq_10_fcs",
+  filters = list(
+    geo = c("DK", "BE", "NL", "SE", "AT", "DE", "FR", "IT", "ES"),
+    na_item = "P31_S14",
+    unit = "CLV20_MNAC",
+    s_adj = "SCA"
+  ),
+  select_freq = "Q",
+  date_filter = "1999-01-01:2026-06-30",
+  name = FALSE,
+  stringsAsFactors = FALSE
+)
+
+# 2. Lav en tabel med alle kvartaler for hvert land
+# Manglende observationer bevares som NA, så lag(4) er fire kvartaler
+# Ét nummer for hvert kvartal fra 1999K1 til 2026K2
+
+kvartaler <- sort(unique(as.character(forbrug$time)))
+
+kvartaler <- kvartaler[kvartaler <= "2026-Q2"]
+
+forbrug_komplet <- forbrug |>
+  select(geo, time, values) |>
+  mutate(time = as.character(time)) |>
+  complete(
+    geo = c("DK", "BE", "NL", "SE", "AT", "DE", "FR", "IT", "ES"),
+    time = kvartaler
+  )
+
+# 3. Beregn væksten i forhold til samme kvartal året før
+realvaekst <- forbrug_komplet |>
+  arrange(geo, time) |>
+  group_by(geo) |>
+  mutate(
+    realvaekst_pct = 100 * (values / dplyr::lag(values, 4) - 1)
+  ) |>
+  ungroup() |>
+  filter(time >= "2000-Q1", time <= "2026-Q2")
+
+# 4. Vis resultatet med én kolonne pr. land
+realvaekst_tabel <- realvaekst |>
+  select(time, geo, realvaekst_pct) |>
+  pivot_wider(
+    names_from = geo,
+    values_from = realvaekst_pct
+  ) |>
+  arrange(time) |>
+  select(time, DK, BE, NL, SE, AT, DE, FR, IT, ES) |>
+  mutate(across(where(is.numeric), ~ round(.x, 2)))
+
+View(realvaekst_tabel)
+
+# -------------
+# Opgave 5.2
+#--------------
+
+lande <- c(
+  DK = "Danmark",
+  BE = "Belgien",
+  NL = "Holland",
+  SE = "Sverige",
+  AT = "Østrig",
+  DE = "Tyskland",
+  FR = "Frankrig",
+  IT = "Italien",
+  ES = "Spanien"
+)
+
+gennemsnit_pr_land <- realvaekst |>
+  group_by(geo) |>
+  summarise(
+    gennemsnit_pct = mean(realvaekst_pct),
+    .groups = "drop"
+  ) |>
+  mutate(land = unname(lande[geo])) |>
+  select(land, gennemsnit_pct) |>
+  arrange(desc(gennemsnit_pct)) |>
+  mutate(gennemsnit_pct = round(gennemsnit_pct, 2))
+
+View(gennemsnit_pr_land)
+print(gennemsnit_pr_land)
+
+# -------------
+# Opgave 5.3
+#--------------
+
+corona_sammenligning <- realvaekst |>
+  filter(time >= "2000-Q1", time <= "2026-Q2") |>
+  mutate(
+    corona = time >= "2020-Q1" & time <= "2022-Q4"
+  ) |>
+  group_by(geo) |>
+  summarise(
+    med_corona = mean(realvaekst_pct),
+    uden_corona = mean(realvaekst_pct[!corona]),
+    .groups = "drop"
+  ) |>
+  mutate(
+    land = unname(lande[geo]),
+    forskel_pctpoint = med_corona - uden_corona,
+  ) |>
+  select(
+    land, med_corona, uden_corona,
+    forskel_pctpoint
+  ) 
+
+# Vis tabellen med to decimaler
+corona_tabel <- corona_sammenligning |>
+  mutate(across(where(is.numeric), ~ round(.x, 2)))
+
+View(corona_tabel)
+print(corona_tabel)
+
+# -------------
+# Opgave 5.4
+#--------------
+
+effekt_corona <- realvaekst |>
+  filter(time >= "2020-Q1", time <= "2026-Q2") |>
+  group_by(geo) |>
+  summarise(
+    gennemsnit_pct = mean(realvaekst_pct),
+    .groups = "drop"
+  ) |>
+  mutate(land = unname(lande[geo])) |>
+  select(land, gennemsnit_pct) |>
+  arrange(gennemsnit_pct)
+

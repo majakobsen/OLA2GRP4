@@ -1,15 +1,34 @@
 #data prep
-library(readxl)
+library(dkstat)
 
-forbrugertillid <- read_excel("/Users/emmasofiehojelse/Downloads/2026924133925663246794FORV1.xlsx")
+# Hent data i et separat objekt
+forbrugertillid_raw <- dst_get_data(
+  table = "FORV1",
+  query = list(
+    INDIKATOR = "Forbrugertillidsindikatoren",
+    TID = "*"
+  ),
+  lang = "da",
+  parse_dst_tid = FALSE
+)
 
-View(forbrugertillid)
+# Lav de to kolonner som på billedet
+forbrugertillid <- data.frame(
+  tid = forbrugertillid_raw$TID,
+  ftillid = forbrugertillid_raw$value
+)
 
-forbrugertillid <- forbrugertillid[-c(1,2), ]
+# Vælg perioden og sortér månederne
+forbrugertillid <- forbrugertillid[
+  forbrugertillid$tid >= "1996M01" &
+    forbrugertillid$tid <= "2026M09",
+]
 
-View(forbrugertillid)
+forbrugertillid <- forbrugertillid[
+  order(forbrugertillid$tid),
+]
 
-colnames(forbrugertillid) <- c("tid", "ftillid")
+rownames(forbrugertillid) <- NULL
 
 View(forbrugertillid)
 

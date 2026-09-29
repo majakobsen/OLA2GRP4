@@ -1,8 +1,29 @@
-spg <- read_excel("/Users/emmasofiehojelse/Downloads/202692414856663246794FORV1.xlsx")
+#data prep
+library(dkstat)
 
-View(spg)
+spg_raw <- dst_get_data(
+  table = "FORV1",
+  query = list(
+    INDIKATOR = "Anskaffelse af større forbrugsgoder, fordelagtigt for øjeblikket",
+    TID = "*"
+  ),
+  lang = "da",
+  parse_dst_tid = FALSE
+)
 
-spg <- spg[-c(1,2), ]
+spg <- data.frame(
+  tid = spg_raw$TID,
+  spg = spg_raw$value
+)
+
+# Vælg perioden og sortér månederne
+spg <- spg[
+  spg$tid >= "2000M01" &
+    spg$tid <= "2026M09",
+]
+
+spg <- spg[order(spg$tid), ]
+rownames(spg) <- NULL
 
 View(spg)
 
@@ -19,6 +40,8 @@ spg_kvartal <- aggregate(spg_ts,
                          FUN = mean)
 
 spg_kvartal
+
+View(spg_kvartal)
 
 mean(spg_kvartal)
 

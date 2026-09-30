@@ -1,0 +1,30 @@
+# -------------
+# Opgave 5.3
+#--------------
+
+corona_sammenligning <- realvaekst |>
+  filter(time >= "2000-Q1", time <= "2026-Q2") |>
+  mutate(
+    corona = time >= "2020-Q1" & time <= "2022-Q4"
+  ) |>
+  group_by(geo) |>
+  summarise(
+    med_corona = mean(realvaekst_pct),
+    uden_corona = mean(realvaekst_pct[!corona]),
+    .groups = "drop"
+  ) |>
+  mutate(
+    land = unname(lande[geo]),
+    forskel_pctpoint = med_corona - uden_corona,
+  ) |>
+  select(
+    land, med_corona, uden_corona,
+    forskel_pctpoint
+  ) 
+
+# Vis tabellen med to decimaler
+corona_tabel <- corona_sammenligning |>
+  mutate(across(where(is.numeric), ~ round(.x, 2)))
+
+View(corona_tabel)
+print(corona_tabel)

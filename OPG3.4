@@ -1,0 +1,25 @@
+# --------------------------------------------------
+# OPGAVE 3.4 - FORKLARINGSGRADEN
+# --------------------------------------------------
+
+# Ligningen for forklaringsgraden:
+# R^2 = 1 - RSS / TSS
+
+R2_DI <- 1 - RSS_DI / TSS_DI
+
+R2_DST <- 1 - RSS_DST / TSS_DST
+
+# Saml forklaringsgraden for begge modeller
+forklaringsgrad <- data.frame(
+  Model = c("DI", "DST"),
+  R2 = c(R2_DI, R2_DST),
+  Forklaringsgrad_pct = c(R2_DI, R2_DST) * 100
+)
+
+View(forklaringsgrad)
+print(forklaringsgrad)
+
+
+# Kontrollér med R-squared fra modellernes summary
+summary(model_DI)$r.squared
+summary(model_DST)$r.squared

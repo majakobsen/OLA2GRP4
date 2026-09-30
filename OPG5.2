@@ -1,0 +1,29 @@
+# -------------
+# Opgave 5.2
+#--------------
+
+lande <- c(
+  DK = "Danmark",
+  BE = "Belgien",
+  NL = "Holland",
+  SE = "Sverige",
+  AT = "Østrig",
+  DE = "Tyskland",
+  FR = "Frankrig",
+  IT = "Italien",
+  ES = "Spanien"
+)
+
+gennemsnit_pr_land <- realvaekst |>
+  group_by(geo) |>
+  summarise(
+    gennemsnit_pct = mean(realvaekst_pct),
+    .groups = "drop"
+  ) |>
+  mutate(land = unname(lande[geo])) |>
+  select(land, gennemsnit_pct) |>
+  arrange(desc(gennemsnit_pct)) |>
+  mutate(gennemsnit_pct = round(gennemsnit_pct, 2))
+
+View(gennemsnit_pr_land)
+print(gennemsnit_pr_land)

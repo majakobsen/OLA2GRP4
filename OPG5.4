@@ -1,0 +1,14 @@
+# -------------
+# Opgave 5.4
+#--------------
+
+effekt_corona <- realvaekst |>
+  filter(time >= "2020-Q1", time <= "2026-Q2") |>
+  group_by(geo) |>
+  summarise(
+    gennemsnit_pct = mean(realvaekst_pct),
+    .groups = "drop"
+  ) |>
+  mutate(land = unname(lande[geo])) |>
+  select(land, gennemsnit_pct) |>
+  arrange(gennemsnit_pct)

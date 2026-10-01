@@ -40,7 +40,6 @@ realvaekst <- forbrug_komplet |>
   mutate(
     realvaekst_pct = 100 * (values / lag(values, 4) - 1)
   ) |>
-  ungroup() |>
   filter(time >= "2000-Q1", time <= "2026-Q2")
 
 # 4. Vis resultatet med én kolonne pr. land

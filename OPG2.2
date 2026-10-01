@@ -1,10 +1,11 @@
 #OPG2.2
 
-#Forudsig årlig realvækst i 2026k3
-#DST's opdaterede FTI for 2026K3
-ny_DST <- data.frame(
-  DST_FTI = -13.83333
-)
+#henter automatisk dst-fti for 2026K3
+ny_DST <- DST_FTI[
+  DST_FTI$Tidsinterval == "2026K3",
+  "DST_FTI",
+  drop = FALSE
+]
 
 #Forudsig den årlige realvækst
 forudsig_DST_2026K3 <- predict(
@@ -15,10 +16,12 @@ forudsig_DST_2026K3 <- predict(
 forudsig_DST_2026K3
 
 
-#DIs opdaterede FTI for 2026K3
-ny_DI <- data.frame(
-  DI_FTI = -13.30833
-)
+#henter automatisk di-fti for 2026K3
+ny_DI <- DIFTI_kvt[
+  DIFTI_kvt$Tidsinterval == "2026K3",
+  "DI_FTI",
+  drop = FALSE
+]
 
 #forudsig den årlige realvækst
 forudsig_DI_2026K3 <- predict(
@@ -28,7 +31,11 @@ forudsig_DI_2026K3 <- predict(
 
 forudsig_DI_2026K3
 
-
+################################# NYE SVAR
+summary(model_DI)
+summary(model_DST)
+forudsig_DI_2026K3
+forudsig_DST_2026K3
 
 ###GRAF
 

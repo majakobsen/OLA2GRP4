@@ -2,7 +2,7 @@
 
 library(dplyr)
 
-# Indlæs boligdata
+# Indlæs boligdata fra OLA 1
 newhomes <- read.csv("https://gist.githubusercontent.com/ayki1000/03cdebe8d2d50a16ef6c2fcd4802c6fd/raw/a2f8319a3277cfb822af5eb0962b8e486818866d/boligsiden.csv")
 
 # Fjern rækker med manglende værdier
@@ -29,7 +29,7 @@ BYdataKat$by <- sub("^[0-9 -]+", "", BYdataKat$by)
 # Fjern parentesen og alt efter den
 BYdataKat$by <- sub("\\(.*", "", BYdataKat$by)
 
-# Fjern ekstra mellemrum og brug små bogstaver i begge datasæt
+# brug små bogstaver i begge datasæt, så merge virker.
 BYdataKat$by <- tolower(BYdataKat$by)
 newhomesny$by <- tolower(newhomesny$by)
 
@@ -42,12 +42,9 @@ BYdataSamlet <- aggregate(
   all.x = TRUE
 )
 
-# Kombiner de rensede datasæt ud fra bynavn, beholder kun dem der har værdier i begge sæt
-samlet <- merge(
-  BYdataSamlet,
-  newhomesny,
-  by = "by"
-)
+#Merge
+
+samlet <- merge(BYdataSamlet, newhomesny,by = "by")
 
 # Se resultatet
 View(samlet)

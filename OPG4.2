@@ -1,3 +1,8 @@
+
+# --------------------------------------------------
+# OPGAVE 4.2
+# --------------------------------------------------
+
 #data prep
 library(dkstat)
 
@@ -43,13 +48,153 @@ spg_kvartal
 
 View(spg_kvartal)
 
+fil2 <- file.path(getwd(), "spg_kvartal.csv")
+write.csv2(spg_kvartal, file = fil2, row.names = FALSE)
+
 mean(spg_kvartal)
 
-# Fra 1. kvartal 2000 til 3. kvartal 2026 er det gennemsnitlige 
-# nettotal ca. -10,8. Det negative gennemsnit indikerer, at svarene 
-# over perioden samlet set har hældt mere i retning af, at det ikke 
-# er fordelagtigt at anskaffe større forbrugsgoder på det pågældende 
-# tidspunkt. Resultatet skal dog fortolkes med forsigtighed, da -10,8 
-# ikke er et svar, respondenterne selv kan vælge, men et gennemsnit 
-# af nettotallene over perioden. Et enkelt gennemsnit skjuler desuden 
-# store forskelle mellem kvartalerne. 
+#Graf til spg
+
+#--------------
+library(ggplot2)
+
+# Klargør kvartalstal til grafen
+graf_data <- data.frame(
+  aar = as.numeric(time(spg_kvartal)),
+  nettotal = as.numeric(spg_kvartal)
+)
+
+gennemsnit <- mean(graf_data$nettotal, na.rm = TRUE)
+lavpunkt <- graf_data[which.min(graf_data$nettotal), ]
+
+# Dansk talformat
+tal <- function(x) {
+  formatC(x, format = "f", digits = 1, decimal.mark = ",")
+}
+
+lavpunkt_kvartal <- round((lavpunkt$aar %% 1) * 4) + 1
+lavpunkt_tekst <- paste0(
+  floor(lavpunkt$aar), "K", lavpunkt_kvartal,
+  ": ", tal(lavpunkt$nettotal)
+)
+
+graf <- ggplot(graf_data, aes(x = aar, y = nettotal)) +
+  
+  # Nullinje
+  geom_hline(
+    yintercept = 0,
+    colour = "#727B87",
+    linewidth = 0.6
+  ) +
+  
+  # Gennemsnit
+  geom_hline(
+    yintercept = gennemsnit,
+    colour = "#D97706",
+    linetype = "dashed",
+    linewidth = 0.8
+  ) +
+  
+  # Kvartalernes udvikling
+  geom_line(
+    colour = "#173B60",
+    linewidth = 1.1
+  ) +
+  
+  # Fremhæv lavpunkt
+  geom_point(
+    data = lavpunkt,
+    colour = "#D97706",
+    size = 3.5
+  ) +
+  geom_text(
+    data = lavpunkt,
+    aes(label = lavpunkt_tekst),
+    vjust = 2,
+    colour = "#D97706",
+    fontface = "bold",
+    size = 4.5
+  ) +
+  
+  # Forklarende tekst
+  annotate(
+    "text",
+    x = 2000, y = 0,
+    label = "Balance mellem køb nu og vent",
+    hjust = 0, vjust = -0.8,
+    colour = "#596270",
+    size = 4
+  ) +
+  annotate(
+    "label",
+    x = 2013, y = gennemsnit,
+    label = paste0("Gennemsnit: ", tal(gennemsnit)),
+    colour = "#D97706",
+    fill = "white",
+    fontface = "bold",
+    size = 2.2
+  ) +
+  
+  # Årstal og lodrette gitterlinjer hvert femte år
+  scale_x_continuous(
+    breaks = seq(2000, 2025, by = 5),
+    expand = expansion(mult = c(0.01, 0.02))
+  ) +
+  scale_y_continuous(
+    limits = c(-50, 5),
+    breaks = seq(-50, 0, 10)
+  ) +
+  
+  labs(
+    title = "Forbrugerne hælder mod at vente med større køb",
+    subtitle = "Kvartalsvise nettotal | 2000K1–2026K3",
+    x = NULL,
+    y = "Nettotal",
+    caption = paste0(
+      "Kilde: Danmarks Statistik, FORV1. ",
+      "Kvartalstal er gennemsnit af månedlige nettotal."
+    )
+  ) +
+  
+  theme_minimal(base_size = 15) +
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 21,
+      colour = "#173B60"
+    ),
+    plot.subtitle = element_text(
+      size = 13,
+      colour = "#596270",
+      margin = margin(b = 18)
+    ),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(
+      colour = "#E0E0E0",
+      linewidth = 0.4
+    ),
+    panel.grid.major.y = element_line(
+      colour = "#E8ECF0"
+    ),
+    plot.caption = element_text(
+      hjust = 0,
+      size = 10,
+      colour = "#596270",
+      margin = margin(t = 15)
+    ),
+    plot.margin = margin(20, 25, 15, 15)
+  )
+
+graf
+#--
+# Gem i høj opløsning til din slide
+ggsave(
+  "spg_graf.png",
+  plot = graf,
+  width = 13,
+  height = 7,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
+#--

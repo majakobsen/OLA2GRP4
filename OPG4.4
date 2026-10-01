@@ -252,3 +252,59 @@ r2_resultater$p_DST <- p_DST
 r2_resultater$p_DI <- p_DI
 
 View(r2_resultater)
+# Beholder kun signifikante regressioner
+signifikante <- r2_resultater[
+  r2_resultater$p_DST < 0.05 |
+    r2_resultater$p_DI < 0.05,
+]
+
+# Laver data til grafen
+graf_DST <- data.frame(
+  gruppe = signifikante$Forbrugsgruppe,
+  indikator = "DST",
+  r2 = signifikante$DST,
+  p = signifikante$p_DST
+)
+
+graf_DI <- data.frame(
+  gruppe = signifikante$Forbrugsgruppe,
+  indikator = "DI",
+  r2 = signifikante$DI,
+  p = signifikante$p_DI
+)
+
+graf_data <- rbind(graf_DST, graf_DI)
+
+# Beholder kun dem der faktisk er signifikante
+graf_data <- graf_data[graf_data$p < 0.05, ]
+
+
+library(ggplot2)
+
+ggplot(graf_data,
+       aes(x = gruppe,
+           y = r2,
+           fill = indikator)) +
+  
+  geom_col(position = position_dodge(width = 0.9)) +
+  
+  geom_text(
+    aes(label = paste0(round(r2 * 100, 1), "%")),
+    position = position_dodge(width = 0.9),
+    hjust = 1.2
+  ) +
+  
+  labs(
+    title = "Signifikante sammenhænge mellem forbrug og forbrugertillid",
+    x = "Forbrugsgruppe",
+    y = "Forklaringsgrad (R²)",
+    fill = "Indikator"
+  ) +
+  
+  scale_y_continuous(
+    labels = function(x) paste0(x * 100, "%")
+  ) +
+  
+  theme_minimal() +
+  coord_flip()
+

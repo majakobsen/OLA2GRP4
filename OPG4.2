@@ -1,9 +1,10 @@
-
 # --------------------------------------------------
 # OPGAVE 4.2
 # --------------------------------------------------
 
+# --------------------------------------------------
 #data prep
+# --------------------------------------------------
 library(dkstat)
 
 spg_raw <- dst_get_data(
@@ -21,7 +22,9 @@ spg <- data.frame(
   spg = spg_raw$value
 )
 
+# --------------------------------------------------
 # Vælg perioden og sortér månederne
+# --------------------------------------------------
 spg <- spg[
   spg$tid >= "2000M01" &
     spg$tid <= "2026M09",
@@ -53,12 +56,16 @@ write.csv2(spg_kvartal, file = fil2, row.names = FALSE)
 
 mean(spg_kvartal)
 
+# --------------------------------------------------
 #Graf til spg
+# --------------------------------------------------
 
-#--------------
 library(ggplot2)
 
+# --------------------------------------------------
 # Klargør kvartalstal til grafen
+# --------------------------------------------------
+
 graf_data <- data.frame(
   aar = as.numeric(time(spg_kvartal)),
   nettotal = as.numeric(spg_kvartal)
@@ -67,7 +74,10 @@ graf_data <- data.frame(
 gennemsnit <- mean(graf_data$nettotal, na.rm = TRUE)
 lavpunkt <- graf_data[which.min(graf_data$nettotal), ]
 
-# Dansk talformat
+# --------------------------------------------------
+# Talformat
+# --------------------------------------------------
+
 tal <- function(x) {
   formatC(x, format = "f", digits = 1, decimal.mark = ",")
 }
@@ -185,9 +195,9 @@ graf <- ggplot(graf_data, aes(x = aar, y = nettotal)) +
     plot.margin = margin(20, 25, 15, 15)
   )
 
-graf
-#--
-# Gem i høj opløsning til din slide
+# --------------------------------------------------
+# Gem i høj opløsning
+# --------------------------------------------------
 ggsave(
   "spg_graf.png",
   plot = graf,

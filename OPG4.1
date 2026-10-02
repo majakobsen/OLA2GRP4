@@ -1,11 +1,11 @@
 # --------------------------------------------------
-#data prep
+# OPGAVE 4.1
 # --------------------------------------------------
+
+#data prep
 library(dkstat)
 
-# --------------------------------------------------
 # Hent data i et separat objekt
-# --------------------------------------------------
 forbrugertillid_raw <- dst_get_data(
   table = "FORV1",
   query = list(
@@ -36,9 +36,7 @@ rownames(forbrugertillid) <- NULL
 
 View(forbrugertillid)
 
-# --------------------------------------------------
 #Lav til kvartaler
-# --------------------------------------------------
 forbrugertillid$ftillid <- as.numeric(forbrugertillid$ftillid)
 
 ftillid <- ts(forbrugertillid$ftillid,
@@ -50,16 +48,24 @@ ftillid_kvartal <- aggregate(ftillid,
                              FUN = mean)
 ftillid_kvartal
 
-# --------------------------------------------------
 #graf 
-# --------------------------------------------------
-plot(ftillid_kvartal,
-     type = "l",
-     main = "Forbrugertillid i Danmark",
-     xlab = "År",
-     ylab = "Forbrugertillidsindikator")
+
+plot(
+  ftillid_kvartal,
+  type = "l",
+  main = "Danskernes forbrugertillid er\nlangt fra tilbage i plus",
+  xlab = "År",
+  ylab = "Forbrugertillidsindikator"
+)
 
 abline(h = 0, lty = 2)
 
-#Over 0 → forbrugerne er samlet set mere optimistiske.
-#Under 0 → forbrugerne er samlet set mere pessimistiske.
+mtext(
+  "Kvartalsgennemsnit af forbrugertilliden i Danmark 1996-2026",
+  side = 1, line = 4, cex = 0.7
+)
+
+mtext(
+  "Kilde: Egne beregninger på baggrund af DST, tabel FORV1.",
+  side = 1, line = 5, cex = 0.7
+)

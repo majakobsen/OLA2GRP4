@@ -1,5 +1,5 @@
 # --------------------------------------------------
-# OPGAVE 4.4 - FORBRUGERTILLID
+# data prep
 # --------------------------------------------------
 
 library(dkstat)
@@ -16,7 +16,7 @@ names(fti_meta$values) <- toupper(names(fti_meta$values))
 
 
 # --------------------------------------------------
-# VÆLGER DE 5 INDIKATORER VI SKAL BRUGE
+# vælger de 5 indikatorer
 # --------------------------------------------------
 
 fti_filter <- rep(list("*"), length(fti_meta$values))
@@ -32,7 +32,7 @@ fti_filter[["INDIKATOR"]] <- c(
 
 
 # --------------------------------------------------
-# HENTER DATA
+# henter data
 # --------------------------------------------------
 
 fti <- dst_get_data(
@@ -50,7 +50,7 @@ fti <- fti[
 
 
 # --------------------------------------------------
-# LAVER MÅNEDER TIL KVARTALER
+# måneder til kvartaler
 # --------------------------------------------------
 
 fti$aar <- as.numeric(substr(fti$TID, 1, 4))
@@ -67,8 +67,9 @@ fti$TID_kvt <- paste0(
   fti$kvartal
 )
 
-
-# Finder gennemsnittet af de 3 måneder i hvert kvartal
+# --------------------------------------------------
+# finder gennemsnit
+# --------------------------------------------------
 fti_kvt <- aggregate(
   value ~ TID_kvt + INDIKATOR,
   data = fti,
@@ -78,9 +79,8 @@ fti_kvt <- aggregate(
 
 
 # --------------------------------------------------
-# LAVER INDIKATORERNE TIL KOLONNER
+# indikatorer til kolonner
 # --------------------------------------------------
-
 fti_bred <- reshape(
   fti_kvt,
   idvar = "TID_kvt",
@@ -93,16 +93,15 @@ fti_bred <- fti_bred[
 ]
 
 # --------------------------------------------------
-# Ser resultatet
+# Resultatet
 # --------------------------------------------------
 View(fti_bred)
 
 names(fti_bred)
 
 # --------------------------------------------------
-# GIVER KOLONNERNE SIMPLE NAVNE
+# giver kolonner navne
 # --------------------------------------------------
-
 names(fti_bred) <- c(
   "TID",
   "DST_FTI",
@@ -114,16 +113,15 @@ names(fti_bred) <- c(
 
 
 # --------------------------------------------------
-# BEREGNER DI'S FORBRUGERTILLIDSINDIKATOR
+#beregner DI's fti
 # --------------------------------------------------
-
 fti_bred$DI_FTI <- rowMeans(
   fti_bred[, c("F2", "F4", "F9", "F10")],
   na.rm = TRUE
 )
 
 # --------------------------------------------------
-# Beholder kun det vi skal bruge til regressionerne
+#Beholder kun det vi skal bruge til regressionerne
 # --------------------------------------------------
 fti_bred <- fti_bred[, c(
   "TID",
@@ -134,7 +132,7 @@ fti_bred <- fti_bred[, c(
 View(fti_bred)
 
 # --------------------------------------------------
-# SAMLER FORBRUG OG FORBRUGERTILLID
+# samler forbrug og forbrugertillid
 # --------------------------------------------------
 
 data_44 <- merge(
@@ -171,7 +169,7 @@ forbrugsgrupper <- setdiff(
 forbrugsgrupper
 length(forbrugsgrupper)
 # --------------------------------------------------
-# 15 REGRESSIONER MED DST
+# 15 regressioner med DST
 # --------------------------------------------------
 
 summary_DST <- list()
@@ -187,7 +185,7 @@ for (gruppe in forbrugsgrupper) {
 
 
 # --------------------------------------------------
-# 15 REGRESSIONER MED DI
+# 15 regressioner med DI
 # --------------------------------------------------
 
 summary_DI <- list()
@@ -207,7 +205,7 @@ length(summary_DST)
 length(summary_DI)
 
 # --------------------------------------------------
-# HENTER R-SQUARED FOR ALLE REGRESSIONER
+# R-squared
 # --------------------------------------------------
 
 # Tomme vektorer
@@ -233,7 +231,7 @@ r2_resultater <- data.frame(
 View(r2_resultater)
 
 # --------------------------------------------------
-# HENTER P-VÆRDIER
+# henter p-værdier
 # --------------------------------------------------
 
 p_DST <- c()
@@ -252,13 +250,15 @@ r2_resultater$p_DST <- p_DST
 r2_resultater$p_DI <- p_DI
 
 View(r2_resultater)
-# Beholder kun signifikante regressioner
+# Beholder signifikante regressioner
 signifikante <- r2_resultater[
   r2_resultater$p_DST < 0.05 |
     r2_resultater$p_DI < 0.05,
 ]
 
-# Laver data til grafen
+# --------------------------------------------------
+# graf
+# --------------------------------------------------
 graf_DST <- data.frame(
   gruppe = signifikante$Forbrugsgruppe,
   indikator = "DST",
@@ -307,4 +307,3 @@ ggplot(graf_data,
   
   theme_minimal() +
   coord_flip()
-

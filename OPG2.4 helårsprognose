@@ -1,0 +1,90 @@
+#henter de faktiske kvartaler i 2025
+forbrug_2025K1 <- privatforbrug$Privatforbrug[
+  privatforbrug$Tidsinterval == "2025K1"
+]
+
+forbrug_2025K2 <- privatforbrug$Privatforbrug[
+  privatforbrug$Tidsinterval == "2025K2"
+]
+
+forbrug_2025K3 <- privatforbrug$Privatforbrug[
+  privatforbrug$Tidsinterval == "2025K3"
+]
+
+forbrug_2025K4 <- privatforbrug$Privatforbrug[
+  privatforbrug$Tidsinterval == "2025K4"
+]
+
+
+#henter de faktiske kvartaler i 2026
+forbrug_2026K1 <- privatforbrug$Privatforbrug[
+  privatforbrug$Tidsinterval == "2026K1"
+]
+
+forbrug_2026K2 <- privatforbrug$Privatforbrug[
+  privatforbrug$Tidsinterval == "2026K2"
+]
+
+#beregner forventet niveau i 2026k3 med di-modellen
+forbrug_DI_2026K3 <- forbrug_2025K3 *
+  (1 + as.numeric(forudsig_DI_2026K3) / 100)
+
+#beregner forventet niveau i 2026k4
+#antager samme årlige vækst som i 2026k3
+forbrug_DI_2026K4 <- forbrug_2025K4 *
+  (1 + as.numeric(forudsig_DI_2026K3) / 100)
+
+
+#beregner forventet niveau i 2026k3 med dst-modellen
+forbrug_DST_2026K3 <- forbrug_2025K3 *
+  (1 + as.numeric(forudsig_DST_2026K3) / 100)
+
+#beregner forventet niveau i 2026k4
+#antager samme årlige vækst som i 2026k3
+forbrug_DST_2026K4 <- forbrug_2025K4 *
+  (1 + as.numeric(forudsig_DST_2026K3) / 100)
+
+#gennemsnitligt privatforbrug i hele 2025
+forbrug_2025 <- mean(
+  c(
+    forbrug_2025K1,
+    forbrug_2025K2,
+    forbrug_2025K3,
+    forbrug_2025K4
+  )
+)
+
+#gennemsnitligt privatforbrug i 2026 med di-modellen
+forbrug_DI_2026 <- mean(
+  c(
+    forbrug_2026K1,
+    forbrug_2026K2,
+    forbrug_DI_2026K3,
+    forbrug_DI_2026K4
+  )
+)
+
+#gennemsnitligt privatforbrug i 2026 med dst-modellen
+forbrug_DST_2026 <- mean(
+  c(
+    forbrug_2026K1,
+    forbrug_2026K2,
+    forbrug_DST_2026K3,
+    forbrug_DST_2026K4
+  )
+)
+
+#helårsvæksten for di-modellen
+helarsvaekst_DI <- (
+  forbrug_DI_2026 / forbrug_2025 - 1
+) * 100
+
+#helårsvæksten for dst-modellen
+helarsvaekst_DST <- (
+  forbrug_DST_2026 / forbrug_2025 - 1
+) * 100
+
+
+#resultaterne
+helarsvaekst_DI
+helarsvaekst_DST

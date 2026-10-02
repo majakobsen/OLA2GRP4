@@ -1,7 +1,11 @@
+# --------------------------------------------------
 #data prep
+# --------------------------------------------------
 library(dkstat)
 
+# --------------------------------------------------
 # Hent data i et separat objekt
+# --------------------------------------------------
 forbrugertillid_raw <- dst_get_data(
   table = "FORV1",
   query = list(
@@ -32,7 +36,9 @@ rownames(forbrugertillid) <- NULL
 
 View(forbrugertillid)
 
+# --------------------------------------------------
 #Lav til kvartaler
+# --------------------------------------------------
 forbrugertillid$ftillid <- as.numeric(forbrugertillid$ftillid)
 
 ftillid <- ts(forbrugertillid$ftillid,
@@ -44,7 +50,9 @@ ftillid_kvartal <- aggregate(ftillid,
                              FUN = mean)
 ftillid_kvartal
 
+# --------------------------------------------------
 #graf 
+# --------------------------------------------------
 plot(ftillid_kvartal,
      type = "l",
      main = "Forbrugertillid i Danmark",
@@ -53,5 +61,5 @@ plot(ftillid_kvartal,
 
 abline(h = 0, lty = 2)
 
-#Over 0 → forbrugerne er samlet set mere positive/optimistiske.
-#Under 0 → forbrugerne er samlet set mere negative/pessimistiske.
+#Over 0 → forbrugerne er samlet set mere optimistiske.
+#Under 0 → forbrugerne er samlet set mere pessimistiske.
